@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { Users, Briefcase, MessageSquare, TrendingUp } from 'lucide-react';
+import { Users, Briefcase, MessageSquare, TrendingUp, LucideIcon } from 'lucide-react';
 
 interface StatCard {
   title: string;
   value: string;
   change: string;
   changeType: 'positive' | 'negative' | 'neutral';
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
 }
 
 const DashboardStats = () => {
