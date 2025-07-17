@@ -350,27 +350,36 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          message_type: string | null
           read_at: string | null
           receiver_id: string
           sender_id: string
+          video_call_duration: number | null
+          video_call_id: string | null
         }
         Insert: {
           application_id?: string | null
           content: string
           created_at?: string | null
           id?: string
+          message_type?: string | null
           read_at?: string | null
           receiver_id: string
           sender_id: string
+          video_call_duration?: number | null
+          video_call_id?: string | null
         }
         Update: {
           application_id?: string | null
           content?: string
           created_at?: string | null
           id?: string
+          message_type?: string | null
           read_at?: string | null
           receiver_id?: string
           sender_id?: string
+          video_call_duration?: number | null
+          video_call_id?: string | null
         }
         Relationships: [
           {
@@ -625,6 +634,70 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      video_calls: {
+        Row: {
+          application_id: string | null
+          created_at: string | null
+          ended_at: string | null
+          guest_id: string
+          host_id: string
+          id: string
+          room_id: string
+          scheduled_at: string | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          application_id?: string | null
+          created_at?: string | null
+          ended_at?: string | null
+          guest_id: string
+          host_id: string
+          id?: string
+          room_id: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          created_at?: string | null
+          ended_at?: string | null
+          guest_id?: string
+          host_id?: string
+          id?: string
+          room_id?: string
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_calls_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_calls_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_calls_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

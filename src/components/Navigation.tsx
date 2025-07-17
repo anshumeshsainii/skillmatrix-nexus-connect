@@ -1,58 +1,77 @@
 
 import React from 'react';
-import { User, Briefcase, Users, MessageSquare, BarChart3, Settings } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Home, User, Settings, MessageSquare, Briefcase } from 'lucide-react';
 import ProfileMenu from './ProfileMenu';
 
 const Navigation = () => {
-  const [activeTab, setActiveTab] = React.useState('dashboard');
+  const location = useLocation();
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'jobs', label: 'Jobs', icon: Briefcase },
-    { id: 'candidates', label: 'Candidates', icon: Users },
-    { id: 'messages', label: 'Messages', icon: MessageSquare },
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
 
   return (
-    <nav className="navbar-blur border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-8">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center">
-              <BarChart3 className="text-white" size={24} />
-            </div>
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              SkillMatrix Connect
-            </h1>
+    <nav className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="flex-shrink-0 flex items-center">
+              <div className="h-8 w-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+                <Briefcase className="h-5 w-5 text-white" />
+              </div>
+              <span className="ml-2 text-xl font-bold text-gray-900">SkillMatrix</span>
+            </Link>
           </div>
           
-          <div className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.id}
-                  variant={activeTab === item.id ? 'default' : 'ghost'}
-                  className={`flex items-center space-x-2 ${
-                    activeTab === item.id 
-                      ? 'bg-gradient-primary text-white shadow-lg' 
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                  onClick={() => setActiveTab(item.id)}
-                >
-                  <Icon size={18} />
-                  <span>{item.label}</span>
-                </Button>
-              );
-            })}
+          <div className="flex items-center space-x-4">
+            <Link to="/">
+              <Button 
+                variant={isActive('/') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Home className="h-4 w-4" />
+                Dashboard
+              </Button>
+            </Link>
+            
+            <Link to="/messages">
+              <Button 
+                variant={isActive('/messages') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Messages
+              </Button>
+            </Link>
+            
+            <Link to="/profile">
+              <Button 
+                variant={isActive('/profile') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <User className="h-4 w-4" />
+                Profile
+              </Button>
+            </Link>
+            
+            <Link to="/settings">
+              <Button 
+                variant={isActive('/settings') ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Button>
+            </Link>
+
+            <ProfileMenu />
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <ProfileMenu />
         </div>
       </div>
     </nav>
