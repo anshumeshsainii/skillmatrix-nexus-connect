@@ -2,6 +2,7 @@
 import React from 'react';
 import { User, Briefcase, Users, MessageSquare, BarChart3, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ProfileMenu from './ProfileMenu';
 
 const Navigation = () => {
   const [activeTab, setActiveTab] = React.useState('dashboard');
@@ -51,7 +52,7 @@ const Navigation = () => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <div className="w-8 h-8 bg-slate-300 rounded-full"></div>
+          <ProfileMenu />
         </div>
       </div>
     </nav>

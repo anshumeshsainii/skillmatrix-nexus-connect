@@ -1,216 +1,281 @@
 
-import React from 'react';
-import { Search, Filter, Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-
-interface Skill {
-  id: string;
-  name: string;
-  category: string;
-  level: number;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users, Search, Filter } from 'lucide-react';
 
 interface Candidate {
   id: string;
-  name: string;
-  title: string;
-  avatar: string;
-  skills: Skill[];
-  matchScore: number;
+  profiles: {
+    full_name: string;
+    email: string;
+    location: string;
+  };
+  experience_years: number;
+  availability_status: string;
+}
+
+interface CandidateSkill {
+  skill_id: string;
+  proficiency_level: number;
+  years_experience: number;
+  skills: {
+    name: string;
+    category: string;
+  };
 }
 
 const DynamicSkillMatrix = () => {
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [selectedSkills, setSelectedSkills] = React.useState<string[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [candidateSkills, setCandidateSkills] = useState<Record<string, CandidateSkill[]>>({});
+  const [skills, setSkills] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [loading, setLoading] = useState(true);
 
-  // Sample data
-  const skills = [
-    { id: '1', name: 'React', category: 'Frontend', level: 4 },
-    { id: '2', name: 'TypeScript', category: 'Frontend', level: 5 },
-    { id: '3', name: 'Node.js', category: 'Backend', level: 4 },
-    { id: '4', name: 'Python', category: 'Backend', level: 3 },
-    { id: '5', name: 'AWS', category: 'Cloud', level: 4 },
-    { id: '6', name: 'Docker', category: 'DevOps', level: 3 },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const candidates: Candidate[] = [
-    {
-      id: '1',
-      name: 'Sarah Chen',
-      title: 'Senior Frontend Developer',
-      avatar: '👩‍💻',
-      skills: [
-        { id: '1', name: 'React', category: 'Frontend', level: 5 },
-        { id: '2', name: 'TypeScript', category: 'Frontend', level: 4 },
-      ],
-      matchScore: 95
-    },
-    {
-      id: '2',
-      name: 'Mike Johnson',
-      title: 'Full Stack Engineer',
-      avatar: '👨‍💻',
-      skills: [
-        { id: '3', name: 'Node.js', category: 'Backend', level: 5 },
-        { id: '5', name: 'AWS', category: 'Cloud', level: 4 },
-      ],
-      matchScore: 88
-    },
-    {
-      id: '3',
-      name: 'Emily Rodriguez',
-      title: 'DevOps Engineer',
-      avatar: '👩‍🔧',
-      skills: [
-        { id: '5', name: 'AWS', category: 'Cloud', level: 5 },
-        { id: '6', name: 'Docker', category: 'DevOps', level: 4 },
-      ],
-      matchScore: 92
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch candidates with profiles
+      const { data: candidatesData, error: candidatesError } = await supabase
+        .from('candidates')
+        .select(`
+          id,
+          experience_years,
+          availability_status,
+          profiles (
+            full_name,
+            email,
+            location
+          )
+        `)
+        .eq('availability_status', 'open');
+
+      if (candidatesError) throw candidatesError;
+
+      // Fetch all skills
+      const { data: skillsData, error: skillsError } = await supabase
+        .from('skills')
+        .select('*')
+        .order('category', { ascending: true });
+
+      if (skillsError) throw skillsError;
+
+      // Fetch candidate skills
+      const { data: candidateSkillsData, error: candidateSkillsError } = await supabase
+        .from('candidate_skills')
+        .select(`
+          candidate_id,
+          skill_id,
+          proficiency_level,
+          years_experience,
+          skills (
+            name,
+            category
+          )
+        `);
+
+      if (candidateSkillsError) throw candidateSkillsError;
+
+      // Group candidate skills by candidate ID
+      const skillsByCandidate: Record<string, CandidateSkill[]> = {};
+      candidateSkillsData?.forEach(skill => {
+        if (!skillsByCandidate[skill.candidate_id]) {
+          skillsByCandidate[skill.candidate_id] = [];
+        }
+        skillsByCandidate[skill.candidate_id].push(skill);
+      });
+
+      setCandidates(candidatesData || []);
+      setSkills(skillsData || []);
+      setCandidateSkills(skillsByCandidate);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const toggleSkillSelection = (skillId: string) => {
-    setSelectedSkills(prev => 
-      prev.includes(skillId) 
-        ? prev.filter(id => id !== skillId)
-        : [...prev, skillId]
-    );
   };
 
-  const getSkillLevel = (candidate: Candidate, skillId: string) => {
-    const skill = candidate.skills.find(s => s.id === skillId);
-    return skill?.level || 0;
+  const getSkillCategories = () => {
+    const categories = [...new Set(skills.map(skill => skill.category))];
+    return ['all', ...categories];
   };
 
-  const renderSkillLevel = (level: number) => {
+  const filteredCandidates = candidates.filter(candidate => {
+    const matchesSearch = 
+      candidate.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidate.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      candidateSkills[candidate.id]?.some(skill => 
+        skill.skills.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+    const matchesCategory = selectedCategory === 'all' || 
+      candidateSkills[candidate.id]?.some(skill => 
+        skill.skills.category === selectedCategory
+      );
+
+    return matchesSearch && matchesCategory;
+  });
+
+  const getProficiencyColor = (level: number) => {
+    switch (level) {
+      case 1: return 'bg-red-100 text-red-800 border-red-200';
+      case 2: return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 3: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 4: return 'bg-green-100 text-green-800 border-green-200';
+      case 5: return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getProficiencyLabel = (level: number) => {
+    switch (level) {
+      case 1: return 'Beginner';
+      case 2: return 'Basic';
+      case 3: return 'Intermediate';
+      case 4: return 'Advanced';
+      case 5: return 'Expert';
+      default: return 'Unknown';
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex items-center space-x-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            size={12}
-            className={`${
-              star <= level 
-                ? 'text-yellow-400 fill-current' 
-                : 'text-slate-300'
-            }`}
-          />
-        ))}
-      </div>
+      <Card className="gradient-card animate-fade-in">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Users className="h-5 w-5" />
+            <span>Dynamic Skill Matrix</span>
+          </CardTitle>
+          <CardDescription>Loading candidate data...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
-  };
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Skill Matrix
-          </h2>
-          <p className="text-slate-600 dark:text-slate-300">
-            Interactive visualization of candidate skills and expertise levels
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-            <Input
-              placeholder="Search skills..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-64"
-            />
+    <Card className="gradient-card animate-fade-in">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Users className="h-5 w-5" />
+          <span>Dynamic Skill Matrix</span>
+        </CardTitle>
+        <CardDescription>
+          Interactive visualization of candidates and their skill proficiencies
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search candidates or skills..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
-          <Button variant="outline" size="sm">
-            <Filter size={16} className="mr-2" />
-            Filter
-          </Button>
+          <div className="w-full sm:w-48">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger>
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                {getSkillCategories().map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category === 'all' ? 'All Categories' : category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
 
-      {/* Skills Filter */}
-      <div className="flex flex-wrap gap-2">
-        {skills.map((skill) => (
-          <button
-            key={skill.id}
-            onClick={() => toggleSkillSelection(skill.id)}
-            className={`skill-badge ${
-              selectedSkills.includes(skill.id)
-                ? 'bg-gradient-to-r from-blue-600 to-purple-700 shadow-lg'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-            }`}
-          >
-            {skill.name}
-          </button>
-        ))}
-      </div>
-
-      {/* Matrix Grid */}
-      <div className="gradient-card p-6 overflow-x-auto">
-        <div className="min-w-full">
-          <div className="grid gap-4" style={{ gridTemplateColumns: `200px repeat(${skills.length}, 120px)` }}>
-            {/* Header Row */}
-            <div className="font-semibold text-slate-900 dark:text-white">Candidates</div>
-            {skills.map((skill) => (
-              <div key={skill.id} className="text-center">
-                <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                  {skill.name}
+        {/* Candidates Grid */}
+        <div className="space-y-4">
+          {filteredCandidates.length === 0 ? (
+            <div className="text-center py-8 text-slate-600 dark:text-slate-400">
+              No candidates found matching your criteria.
+            </div>
+          ) : (
+            filteredCandidates.map((candidate) => (
+              <div
+                key={candidate.id}
+                className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      {candidate.profiles?.full_name || 'Anonymous'}
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {candidate.experience_years} years experience • {candidate.profiles?.location}
+                    </p>
+                  </div>
+                  <Badge 
+                    variant={candidate.availability_status === 'open' ? 'default' : 'secondary'}
+                    className={candidate.availability_status === 'open' ? 'bg-green-100 text-green-800' : ''}
+                  >
+                    {candidate.availability_status}
+                  </Badge>
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {skill.category}
+
+                {/* Skills */}
+                <div className="flex flex-wrap gap-2">
+                  {candidateSkills[candidate.id]?.map((skill) => (
+                    <Badge
+                      key={skill.skill_id}
+                      variant="outline"
+                      className={`${getProficiencyColor(skill.proficiency_level)} border`}
+                    >
+                      {skill.skills.name} • {getProficiencyLabel(skill.proficiency_level)}
+                      {skill.years_experience > 0 && ` (${skill.years_experience}y)`}
+                    </Badge>
+                  )) || (
+                    <span className="text-sm text-slate-500 italic">No skills listed</span>
+                  )}
                 </div>
               </div>
-            ))}
+            ))
+          )}
+        </div>
 
-            {/* Candidate Rows */}
-            {candidates.map((candidate) => (
-              <React.Fragment key={candidate.id}>
-                <div className="flex items-center space-x-3 py-3">
-                  <div className="text-2xl">{candidate.avatar}</div>
-                  <div>
-                    <div className="font-semibold text-slate-900 dark:text-white text-sm">
-                      {candidate.name}
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                      {candidate.title}
-                    </div>
-                    <div className="text-xs font-medium text-green-600">
-                      {candidate.matchScore}% match
-                    </div>
-                  </div>
-                </div>
-                
-                {skills.map((skill) => {
-                  const level = getSkillLevel(candidate, skill.id);
-                  return (
-                    <div 
-                      key={`${candidate.id}-${skill.id}`}
-                      className={`matrix-cell ${level > 0 ? 'active' : ''}`}
-                    >
-                      <div className="flex flex-col items-center space-y-1">
-                        {level > 0 ? (
-                          <>
-                            <div className="text-lg font-bold text-blue-600">
-                              {level}
-                            </div>
-                            {renderSkillLevel(level)}
-                          </>
-                        ) : (
-                          <div className="text-slate-300 dark:text-slate-600">—</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </React.Fragment>
+        {/* Legend */}
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+          <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-2">
+            Proficiency Levels:
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 3, 4, 5].map((level) => (
+              <Badge
+                key={level}
+                variant="outline"
+                className={`${getProficiencyColor(level)} border text-xs`}
+              >
+                {getProficiencyLabel(level)}
+              </Badge>
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
