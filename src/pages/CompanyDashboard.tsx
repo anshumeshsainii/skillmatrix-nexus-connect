@@ -24,17 +24,43 @@ const CompanyDashboard = () => {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      // Get company employee info
-      const { data: employeeData, error: employeeError } = await supabase
-        .from('company_employees')
-        .select(`
-          *,
-          company:companies(*)
-        `)
+      // First, check if user has a company (as owner)
+      const { data: ownedCompany, error: ownedCompanyError } = await supabase
+        .from('companies')
+        .select('*')
         .eq('profile_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (employeeError) throw employeeError;
+      let company = null;
+      let isOwner = false;
+
+      if (ownedCompany) {
+        company = ownedCompany;
+        isOwner = true;
+      } else {
+        // Check if user is an employee of a company
+        const { data: employeeData, error: employeeError } = await supabase
+          .from('company_employees')
+          .select(`
+            *,
+            company:companies(*)
+          `)
+          .eq('profile_id', user.id)
+          .maybeSingle();
+
+        if (employeeError && employeeError.code !== 'PGRST116') {
+          throw employeeError;
+        }
+
+        if (employeeData?.company) {
+          company = employeeData.company;
+          isOwner = false;
+        }
+      }
+
+      if (!company) {
+        return null;
+      }
 
       // Get company jobs
       const { data: jobs, error: jobsError } = await supabase
@@ -47,15 +73,15 @@ const CompanyDashboard = () => {
             candidate:profiles(full_name, email)
           )
         `)
-        .eq('company_id', employeeData.company.id)
+        .eq('company_id', company.id)
         .order('created_at', { ascending: false });
 
       if (jobsError) throw jobsError;
 
       return {
-        employee: employeeData,
-        company: employeeData.company,
-        jobs: jobs || []
+        company,
+        jobs: jobs || [],
+        isOwner
       };
     },
     enabled: !!user?.id
@@ -106,16 +132,18 @@ const CompanyDashboard = () => {
                 {companyData.company.company_name}
               </h1>
               <p className="text-slate-600 dark:text-slate-300 mt-1">
-                Company Dashboard
+                Company Dashboard {!companyData.isOwner && '(Employee)'}
               </p>
             </div>
-            <Button 
-              onClick={() => setShowJobModal(true)}
-              className="bg-gradient-primary text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Post New Job
-            </Button>
+            {companyData.isOwner && (
+              <Button 
+                onClick={() => setShowJobModal(true)}
+                className="bg-gradient-primary text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Post New Job
+              </Button>
+            )}
           </div>
         </div>
 
@@ -130,7 +158,7 @@ const CompanyDashboard = () => {
                     Active Jobs
                   </p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {companyData.jobs.filter(job => job.is_active).length}
+                    {companyData.jobs.filter((job: any) => job.is_active !== false).length}
                   </p>
                 </div>
               </div>
@@ -146,7 +174,7 @@ const CompanyDashboard = () => {
                     Total Applications
                   </p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {companyData.jobs.reduce((total, job) => total + (job.applications?.length || 0), 0)}
+                    {companyData.jobs.reduce((total: number, job: any) => total + (job.applications?.length || 0), 0)}
                   </p>
                 </div>
               </div>
@@ -162,11 +190,11 @@ const CompanyDashboard = () => {
                     New This Week
                   </p>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {companyData.jobs.filter(job => {
+                    {companyData.jobs.filter((job: any) => {
                       const weekAgo = new Date();
                       weekAgo.setDate(weekAgo.getDate() - 7);
                       return new Date(job.created_at) > weekAgo;
-                    }).reduce((total, job) => total + (job.applications?.length || 0), 0)}
+                    }).reduce((total: number, job: any) => total + (job.applications?.length || 0), 0)}
                   </p>
                 </div>
               </div>
@@ -177,9 +205,9 @@ const CompanyDashboard = () => {
         {/* Jobs List */}
         <Card className="gradient-card">
           <CardHeader>
-            <CardTitle>Your Job Postings</CardTitle>
+            <CardTitle>Job Postings</CardTitle>
             <CardDescription>
-              Manage your active job postings and view applications
+              {companyData.isOwner ? 'Manage your job postings and view applications' : 'View company job postings'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -187,7 +215,7 @@ const CompanyDashboard = () => {
               <div className="text-center py-8">
                 <Briefcase className="h-12 w-12 text-slate-400 mx-auto mb-4" />
                 <p className="text-slate-600 dark:text-slate-300">
-                  No jobs posted yet. Create your first job posting!
+                  No jobs posted yet. {companyData.isOwner && 'Create your first job posting!'}
                 </p>
               </div>
             ) : (
@@ -200,12 +228,12 @@ const CompanyDashboard = () => {
                           <h3 className="font-semibold text-slate-900 dark:text-white">
                             {job.title}
                           </h3>
-                          <Badge variant={job.is_active ? "default" : "secondary"}>
-                            {job.is_active ? "Active" : "Inactive"}
+                          <Badge variant={job.is_active !== false ? "default" : "secondary"}>
+                            {job.is_active !== false ? "Active" : "Inactive"}
                           </Badge>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-300 mb-2">
-                          {job.location} • {job.employment_type}
+                          {job.location} • {job.employment_type || job.job_type}
                         </p>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
                           Posted {new Date(job.created_at).toLocaleDateString()}
@@ -234,7 +262,7 @@ const CompanyDashboard = () => {
       </div>
 
       {/* Modals */}
-      {showJobModal && (
+      {showJobModal && companyData.isOwner && (
         <JobPostingModal
           companyId={companyData.company.id}
           onClose={() => setShowJobModal(false)}

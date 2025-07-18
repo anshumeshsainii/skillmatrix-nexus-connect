@@ -93,7 +93,7 @@ const ApplicationsModal = ({ jobId, onClose }: ApplicationsModalProps) => {
         title: "Message Sent",
         description: "Conversation started with candidate"
       });
-    } catch (error: any) {
+    } catch (error: any) {  
       toast({
         title: "Error starting conversation",
         description: error.message,

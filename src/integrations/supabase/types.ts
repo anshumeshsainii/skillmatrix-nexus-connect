@@ -47,7 +47,7 @@ export type Database = {
             foreignKeyName: "applications_candidate_id_fkey"
             columns: ["candidate_id"]
             isOneToOne: false
-            referencedRelation: "candidates"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -207,6 +207,48 @@ export type Database = {
           },
         ]
       }
+      company_employees: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          position: string | null
+          profile_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          position?: string | null
+          profile_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          position?: string | null
+          profile_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_skills: {
         Row: {
           created_at: string | null
@@ -255,8 +297,10 @@ export type Database = {
           company_id: string
           created_at: string | null
           description: string
+          employment_type: string | null
           experience_level: string | null
           id: string
+          is_active: boolean | null
           job_type: string | null
           location: string | null
           remote_allowed: boolean | null
@@ -272,8 +316,10 @@ export type Database = {
           company_id: string
           created_at?: string | null
           description: string
+          employment_type?: string | null
           experience_level?: string | null
           id?: string
+          is_active?: boolean | null
           job_type?: string | null
           location?: string | null
           remote_allowed?: boolean | null
@@ -289,8 +335,10 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           description?: string
+          employment_type?: string | null
           experience_level?: string | null
           id?: string
+          is_active?: boolean | null
           job_type?: string | null
           location?: string | null
           remote_allowed?: boolean | null
@@ -484,6 +532,7 @@ export type Database = {
           bio: string | null
           created_at: string | null
           email: string
+          experience_level: string | null
           full_name: string | null
           github_url: string | null
           id: string
@@ -491,6 +540,7 @@ export type Database = {
           location: string | null
           phone: string | null
           role: string | null
+          skills: string[] | null
           updated_at: string | null
           website: string | null
         }
@@ -499,6 +549,7 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           email: string
+          experience_level?: string | null
           full_name?: string | null
           github_url?: string | null
           id: string
@@ -506,6 +557,7 @@ export type Database = {
           location?: string | null
           phone?: string | null
           role?: string | null
+          skills?: string[] | null
           updated_at?: string | null
           website?: string | null
         }
@@ -514,6 +566,7 @@ export type Database = {
           bio?: string | null
           created_at?: string | null
           email?: string
+          experience_level?: string | null
           full_name?: string | null
           github_url?: string | null
           id?: string
@@ -521,6 +574,7 @@ export type Database = {
           location?: string | null
           phone?: string | null
           role?: string | null
+          skills?: string[] | null
           updated_at?: string | null
           website?: string | null
         }
