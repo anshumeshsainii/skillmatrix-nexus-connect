@@ -135,15 +135,14 @@ const CompanyDashboard = () => {
                 Company Dashboard {!companyData.isOwner && '(Employee)'}
               </p>
             </div>
-            {companyData.isOwner && (
-              <Button 
-                onClick={() => setShowJobModal(true)}
-                className="bg-gradient-primary text-white"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Post New Job
-              </Button>
-            )}
+            {/* Both owners and employees can post jobs */}
+            <Button 
+              onClick={() => setShowJobModal(true)}
+              className="bg-gradient-primary text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Post New Job
+            </Button>
           </div>
         </div>
 
@@ -207,7 +206,7 @@ const CompanyDashboard = () => {
           <CardHeader>
             <CardTitle>Job Postings</CardTitle>
             <CardDescription>
-              {companyData.isOwner ? 'Manage your job postings and view applications' : 'View company job postings'}
+              {companyData.isOwner ? 'Manage your job postings and view applications' : 'View and manage company job postings'}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -215,7 +214,7 @@ const CompanyDashboard = () => {
               <div className="text-center py-8">
                 <Briefcase className="h-12 w-12 text-slate-400 mx-auto mb-4" />
                 <p className="text-slate-600 dark:text-slate-300">
-                  No jobs posted yet. {companyData.isOwner && 'Create your first job posting!'}
+                  No jobs posted yet. Create your first job posting!
                 </p>
               </div>
             ) : (
@@ -262,7 +261,7 @@ const CompanyDashboard = () => {
       </div>
 
       {/* Modals */}
-      {showJobModal && companyData.isOwner && (
+      {showJobModal && (
         <JobPostingModal
           companyId={companyData.company.id}
           onClose={() => setShowJobModal(false)}

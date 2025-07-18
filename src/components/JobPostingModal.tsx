@@ -28,20 +28,23 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
     employment_type: '',
     salary_min: '',
     salary_max: '',
-    skills_required: ''
+    skills_required: '',
+    experience_level: 'mid',
+    remote_allowed: false
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     });
   };
 
-  const handleSelectChange = (value: string) => {
+  const handleSelectChange = (field: string, value: string) => {
     setFormData({
       ...formData,
-      employment_type: value
+      [field]: value
     });
   };
 
@@ -63,15 +66,21 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
           requirements: formData.requirements,
           location: formData.location,
           employment_type: formData.employment_type,
+          experience_level: formData.experience_level,
           salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
           salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
-          skills_required: skillsArray,
+          remote_allowed: formData.remote_allowed,
           company_id: companyId,
-          posted_by: user?.id,
-          is_active: true
+          is_active: true,
+          status: 'active'
         });
 
       if (error) throw error;
+
+      toast({
+        title: "Job Posted Successfully",
+        description: "Your job posting is now live and visible to candidates."
+      });
 
       onJobPosted();
     } catch (error: any) {
@@ -104,7 +113,7 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
             <div>
               <Input
                 name="title"
-                placeholder="Job Title"
+                placeholder="Job Title (e.g., Senior Software Engineer)"
                 value={formData.title}
                 onChange={handleInputChange}
                 required
@@ -114,7 +123,7 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
             <div>
               <Textarea
                 name="description"
-                placeholder="Job Description"
+                placeholder="Job Description - Describe the role, responsibilities, and what the candidate will be doing..."
                 value={formData.description}
                 onChange={handleInputChange}
                 rows={4}
@@ -125,7 +134,7 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
             <div>
               <Textarea
                 name="requirements"
-                placeholder="Requirements"
+                placeholder="Requirements - List the qualifications, skills, and experience needed..."
                 value={formData.requirements}
                 onChange={handleInputChange}
                 rows={3}
@@ -136,12 +145,12 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
             <div className="grid grid-cols-2 gap-4">
               <Input
                 name="location"
-                placeholder="Location"
+                placeholder="Location (e.g., New York, NY or Remote)"
                 value={formData.location}
                 onChange={handleInputChange}
                 required
               />
-              <Select onValueChange={handleSelectChange}>
+              <Select onValueChange={(value) => handleSelectChange('employment_type', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Employment Type" />
                 </SelectTrigger>
@@ -155,17 +164,44 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <Select onValueChange={(value) => handleSelectChange('experience_level', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Experience Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="entry">Entry Level</SelectItem>
+                  <SelectItem value="mid">Mid Level</SelectItem>
+                  <SelectItem value="senior">Senior Level</SelectItem>
+                  <SelectItem value="lead">Lead/Principal</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="remote_allowed"
+                  name="remote_allowed"
+                  checked={formData.remote_allowed}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                <label htmlFor="remote_allowed" className="text-sm">
+                  Remote work allowed
+                </label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <Input
                 name="salary_min"
                 type="number"
-                placeholder="Min Salary"
+                placeholder="Min Salary (optional)"
                 value={formData.salary_min}
                 onChange={handleInputChange}
               />
               <Input
                 name="salary_max"
                 type="number"
-                placeholder="Max Salary"
+                placeholder="Max Salary (optional)"
                 value={formData.salary_max}
                 onChange={handleInputChange}
               />
@@ -174,7 +210,7 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
             <div>
               <Input
                 name="skills_required"
-                placeholder="Required Skills (comma separated)"
+                placeholder="Required Skills (comma separated, e.g., React, Node.js, TypeScript)"
                 value={formData.skills_required}
                 onChange={handleInputChange}
               />
