@@ -21,10 +21,9 @@ const Auth = () => {
     fullName: '',
     confirmPassword: '',
     role: 'candidate',
-    companyId: '',
+    companyName: '',
     position: ''
   });
-  const [companies, setCompanies] = useState<any[]>([]);
   const [showCompanyFields, setShowCompanyFields] = useState(false);
 
   // Redirect based on role
@@ -49,31 +48,6 @@ const Auth = () => {
     }
   }, [user, loading, navigate]);
 
-  // Fetch companies for company employee signup
-  useEffect(() => {
-    if (showCompanyFields) {
-      fetchCompanies();
-    }
-  }, [showCompanyFields]);
-
-  const fetchCompanies = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('companies')
-        .select('id, company_name')
-        .order('company_name');
-
-      if (error) throw error;
-      setCompanies(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error loading companies",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -84,10 +58,6 @@ const Auth = () => {
   const handleRoleChange = (role: string) => {
     setFormData({ ...formData, role });
     setShowCompanyFields(role === 'company_employee');
-  };
-
-  const handleCompanyChange = (companyId: string) => {
-    setFormData({ ...formData, companyId });
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -107,10 +77,10 @@ const Auth = () => {
       return;
     }
 
-    if (formData.role === 'company_employee' && (!formData.companyId || !formData.position)) {
+    if (formData.role === 'company_employee' && (!formData.companyName || !formData.position)) {
       toast({
         title: "Missing company information",
-        description: "Please select a company and enter your position",
+        description: "Please enter your company name and position",
         variant: "destructive"
       });
       return;
@@ -119,7 +89,7 @@ const Auth = () => {
     try {
       const { error } = await signUp(formData.email, formData.password, formData.fullName, {
         role: formData.role,
-        companyId: formData.companyId,
+        companyName: formData.companyName,
         position: formData.position
       });
 
@@ -261,18 +231,15 @@ const Auth = () => {
                   {showCompanyFields && (
                     <>
                       <div>
-                        <Select onValueChange={handleCompanyChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select your company" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {companies.map((company) => (
-                              <SelectItem key={company.id} value={company.id}>
-                                {company.company_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          type="text"
+                          name="companyName"
+                          placeholder="Enter your company name"
+                          value={formData.companyName}
+                          onChange={handleInputChange}
+                          required={showCompanyFields}
+                          className="w-full"
+                        />
                       </div>
                       <div>
                         <Input

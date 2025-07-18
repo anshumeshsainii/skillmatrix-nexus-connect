@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           data: {
             full_name: fullName,
             role: metadata?.role || 'candidate',
-            company_id: metadata?.companyId,
+            company_name: metadata?.companyName,
             position: metadata?.position
           }
         }
@@ -69,11 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           title: "Check your email",
           description: "We've sent you a confirmation link to complete your registration."
         });
-
-        // If company employee, create the employee record after email confirmation
-        if (metadata?.role === 'company_employee' && metadata?.companyId) {
-          // This will be handled by the trigger after email confirmation
-        }
       }
 
       return { error };
