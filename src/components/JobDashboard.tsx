@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, DollarSign, Users, Building } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Users, Building, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import JobApplicationModal from './JobApplicationModal';
+import JobPostingModal from './JobPostingModal';
 
 interface Job {
   id: string;
@@ -41,6 +41,7 @@ const JobDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+  const [jobPostingModalOpen, setJobPostingModalOpen] = useState(false);
 
   useEffect(() => {
     fetchJobs();
@@ -90,6 +91,15 @@ const JobDashboard = () => {
     setApplicationModalOpen(true);
   };
 
+  const handleJobPosted = () => {
+    setJobPostingModalOpen(false);
+    fetchJobs();
+    toast({
+      title: "Job Posted Successfully",
+      description: "Your job posting is now live and visible to candidates."
+    });
+  };
+
   const formatSalary = (min?: number, max?: number) => {
     if (!min && !max) return 'Salary not specified';
     if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
@@ -119,8 +129,19 @@ const JobDashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Available Positions</h2>
-        <div className="text-sm text-gray-600">
-          {jobs.length} jobs available
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            {jobs.length} jobs available
+          </div>
+          {user && (
+            <Button 
+              onClick={() => setJobPostingModalOpen(true)}
+              className="bg-gradient-primary text-white hover:opacity-90"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Post a Job
+            </Button>
+          )}
         </div>
       </div>
 
@@ -215,6 +236,13 @@ const JobDashboard = () => {
         job={selectedJob}
         onApplicationSubmitted={fetchJobs}
       />
+
+      {jobPostingModalOpen && (
+        <JobPostingModal
+          onClose={() => setJobPostingModalOpen(false)}
+          onJobPosted={handleJobPosted}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface JobPostingModalProps {
-  companyId: string;
+  companyId?: string;
   onClose: () => void;
   onJobPosted: () => void;
 }
@@ -30,7 +29,8 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
     salary_max: '',
     skills_required: '',
     experience_level: 'mid',
-    remote_allowed: false
+    remote_allowed: false,
+    company_name: ''
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -53,10 +53,38 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
     setLoading(true);
 
     try {
-      const skillsArray = formData.skills_required
-        .split(',')
-        .map(skill => skill.trim())
-        .filter(skill => skill.length > 0);
+      let finalCompanyId = companyId;
+
+      // If no companyId provided, create or find company
+      if (!finalCompanyId && formData.company_name) {
+        // First check if company exists
+        const { data: existingCompany } = await supabase
+          .from('companies')
+          .select('id')
+          .eq('company_name', formData.company_name)
+          .single();
+
+        if (existingCompany) {
+          finalCompanyId = existingCompany.id;
+        } else {
+          // Create new company
+          const { data: newCompany, error: companyError } = await supabase
+            .from('companies')
+            .insert({
+              company_name: formData.company_name,
+              profile_id: user?.id
+            })
+            .select('id')
+            .single();
+
+          if (companyError) throw companyError;
+          finalCompanyId = newCompany.id;
+        }
+      }
+
+      if (!finalCompanyId) {
+        throw new Error('Company information is required');
+      }
 
       const { error } = await supabase
         .from('jobs')
@@ -70,17 +98,12 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
           salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
           salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
           remote_allowed: formData.remote_allowed,
-          company_id: companyId,
+          company_id: finalCompanyId,
           is_active: true,
           status: 'active'
         });
 
       if (error) throw error;
-
-      toast({
-        title: "Job Posted Successfully",
-        description: "Your job posting is now live and visible to candidates."
-      });
 
       onJobPosted();
     } catch (error: any) {
@@ -110,6 +133,18 @@ const JobPostingModal = ({ companyId, onClose, onJobPosted }: JobPostingModalPro
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!companyId && (
+              <div>
+                <Input
+                  name="company_name"
+                  placeholder="Company Name"
+                  value={formData.company_name}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            )}
+
             <div>
               <Input
                 name="title"
