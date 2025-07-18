@@ -5,31 +5,89 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart3, Building, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     fullName: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    role: 'candidate',
+    companyId: '',
+    position: ''
   });
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [showCompanyFields, setShowCompanyFields] = useState(false);
 
-  // Redirect if already authenticated
+  // Redirect based on role
   useEffect(() => {
     if (user && !loading) {
-      navigate('/');
+      // Fetch user profile to check role
+      const checkUserRole = async () => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.role === 'company_employee') {
+          navigate('/company-dashboard');
+        } else {
+          navigate('/');
+        }
+      };
+      
+      checkUserRole();
     }
   }, [user, loading, navigate]);
+
+  // Fetch companies for company employee signup
+  useEffect(() => {
+    if (showCompanyFields) {
+      fetchCompanies();
+    }
+  }, [showCompanyFields]);
+
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, company_name')
+        .order('company_name');
+
+      if (error) throw error;
+      setCompanies(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error loading companies",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleRoleChange = (role: string) => {
+    setFormData({ ...formData, role });
+    setShowCompanyFields(role === 'company_employee');
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    setFormData({ ...formData, companyId });
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -41,11 +99,43 @@ const Auth = () => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      toast({
+        title: "Password mismatch",
+        description: "Passwords do not match",
+        variant: "destructive"
+      });
       return;
     }
 
-    await signUp(formData.email, formData.password, formData.fullName);
+    if (formData.role === 'company_employee' && (!formData.companyId || !formData.position)) {
+      toast({
+        title: "Missing company information",
+        description: "Please select a company and enter your position",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await signUp(formData.email, formData.password, formData.fullName, {
+        role: formData.role,
+        companyId: formData.companyId,
+        position: formData.position
+      });
+
+      if (!error && formData.role === 'company_employee') {
+        toast({
+          title: "Company Employee Account Created",
+          description: "Please check your email and then contact your company admin to complete setup.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {
@@ -143,6 +233,61 @@ const Auth = () => {
                       className="w-full"
                     />
                   </div>
+                  
+                  {/* Role Selection */}
+                  <div>
+                    <Select onValueChange={handleRoleChange} defaultValue="candidate">
+                      <SelectTrigger>
+                        <SelectValue placeholder="I am a..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="candidate">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Job Candidate
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="company_employee">
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4" />
+                            Company Employee
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Company Fields for Company Employees */}
+                  {showCompanyFields && (
+                    <>
+                      <div>
+                        <Select onValueChange={handleCompanyChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select your company" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {companies.map((company) => (
+                              <SelectItem key={company.id} value={company.id}>
+                                {company.company_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Input
+                          type="text"
+                          name="position"
+                          placeholder="Your position/title"
+                          value={formData.position}
+                          onChange={handleInputChange}
+                          required={showCompanyFields}
+                          className="w-full"
+                        />
+                      </div>
+                    </>
+                  )}
+
                   <div>
                     <Input
                       type="password"
