@@ -7,6 +7,7 @@ import { X, User, Mail, Calendar, MessageSquare, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ApplicationsModalProps {
   jobId: string;
@@ -15,6 +16,7 @@ interface ApplicationsModalProps {
 
 const ApplicationsModal = ({ jobId, onClose }: ApplicationsModalProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
   const { data: applications, isLoading, refetch } = useQuery({
@@ -72,10 +74,13 @@ const ApplicationsModal = ({ jobId, onClose }: ApplicationsModalProps) => {
   };
 
   const startConversation = async (candidateId: string, applicationId: string) => {
+    if (!user?.id) return;
+    
     try {
       const { error } = await supabase
         .from('messages')
         .insert({
+          sender_id: user.id,
           receiver_id: candidateId,
           application_id: applicationId,
           content: "Thank you for your application. We'd like to discuss this opportunity with you.",
